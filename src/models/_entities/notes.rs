@@ -12,7 +12,20 @@ pub struct Model {
     pub id: i32,
     pub title: Option<String>,
     pub content: Option<String>,
+    pub owner_user_id: i32
 }
 
+
+
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {}
+pub enum Relation {
+    #[sea_orm(has_many = "super::note_permissions::Entity")]
+    NotePermissions,
+}
+
+impl Related<super::note_permissions::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::NotePermissions.def()
+    }
+}
+impl ActiveModelBehavior for ActiveModel {}

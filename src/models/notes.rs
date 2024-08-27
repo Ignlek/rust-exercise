@@ -1,7 +1,7 @@
-use sea_orm::entity::prelude::*;
+//use sea_orm::entity::prelude::*;
 
-use super::_entities::notes::ActiveModel;
+//use super::_entities::notes::ActiveModel;
 
-impl ActiveModelBehavior for ActiveModel {
+/*impl ActiveModelBehavior for ActiveModel {
     // extend activemodel below (keep comment for generators)
-}
+}*/
