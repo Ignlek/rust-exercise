@@ -19,8 +19,14 @@ impl MigrationTrait for Migration {
             .create_table(
                 Table::create()
                     .table(NotePermissions::Table)
-                    .col(pk_auto(NotePermissions::Id))
                     .if_not_exists()
+                    .col(
+                        ColumnDef::new(NotePermissions::Id)
+                            .integer()
+                            .not_null()
+                            .auto_increment()
+                            .primary_key()
+                    )
                     .col(
                         ColumnDef::new(NotePermissions::NoteId)
                             .integer()

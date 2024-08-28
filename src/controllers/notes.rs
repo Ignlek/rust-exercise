@@ -1,12 +1,14 @@
 #![allow(clippy::missing_errors_doc)]
 #![allow(clippy::unnecessary_struct_initialization)]
 #![allow(clippy::unused_async)]
+use serde_json::to_string;
 use axum::debug_handler;
 use loco_rs::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::models::_entities::notes::{ActiveModel, Entity, Model, Column as NotesColumn};
 use crate::models::_entities::note_permissions;
+use crate::models::_entities::users::{Entity as Users, Column as UsersColumn};
 
 
 
@@ -48,9 +50,10 @@ pub async fn list(
 
     let pid_str = &auth.claims.pid;
     println!("pid_str: {}", pid_str); 
+    let user_id = get_user_id_from_pid(&ctx, &auth.claims.pid).await?;
 
     let owned_notes = Entity::find()
-        .filter(NotesColumn::OwnerUserId.eq(pid_str.parse::<i32>().map_err(|_| Error::string("BadRequest1"))?))
+        .filter(NotesColumn::OwnerUserId.eq(user_id))
         .all(&ctx.db)
         .await?;
     
@@ -69,6 +72,24 @@ pub async fn list(
     format::json(combined_notes)
 }
 
+
+async fn get_user_id_from_pid(ctx: &AppContext, pid: &str) -> Result<i32, Error> {
+    let uuid_pid = Uuid::parse_str(pid).map_err(|_| Error::string("Invalid UUID format"))?;
+
+    let user = Users::find()
+        .filter(UsersColumn::Pid.eq(uuid_pid))
+        .one(&ctx.db)
+        .await?;
+
+    if let Some(user) = user {
+        Ok(user.id)
+    } else {
+        Err(Error::NotFound)
+    }
+}
+fn claims_to_string(auth: &auth::JWT) -> String {
+    to_string(&auth.claims).unwrap_or_else(|_| "Failed to serialize claims".to_string())
+}
 #[debug_handler]
 pub async fn add(
     State(ctx): State<AppContext>, 
@@ -77,17 +98,24 @@ pub async fn add(
 ) -> Result<Response> {
     // Create a new note with the authenticated user's ID as the owner
     let pid_str = &auth.claims.pid;
+
+    println!("{:?}", auth.claims);
+
     println!("pid_str: {}", pid_str);
-    
+
+    let claims_str = claims_to_string(&auth);
+    Error::string(&claims_str);
+    let user_id = get_user_id_from_pid(&ctx, &auth.claims.pid).await?;
 
     let mut item = ActiveModel {
-        owner_user_id: Set(pid_str.parse::<i32>().map_err(|_| Error::string("BadRequest3"))?), // Set the owner_user_id
+        owner_user_id: Set(pid_str.parse::<i32>().map_err(|_| Error::string(&user_id.to_string()))?), // Set the owner_user_id
         ..Default::default()
     };
     params.update(&mut item);
     let item = item.insert(&ctx.db).await?;
     format::json(item)
 }
+
 
 #[debug_handler]
 pub async fn update(
